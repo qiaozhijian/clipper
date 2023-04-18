@@ -172,6 +172,6 @@ PYBIND11_MODULE(clipperpy, m)
     .def("get_affinity_matrix", &clipper::CLIPPER::getAffinityMatrix)
     .def("get_constraint_matrix", &clipper::CLIPPER::getConstraintMatrix)
     .def("set_matrix_data", &clipper::CLIPPER::setMatrixData,
-          "M"_a.noconvert(), "C"_a.noconvert())
+          "M"_a.noconvert(), "C"_a.noconvert(), "A"_a.noconvert())
     .def("set_parallelize", &clipper::CLIPPER::setParallelize);
 }

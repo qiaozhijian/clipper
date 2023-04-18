@@ -91,7 +91,7 @@ namespace clipper {
      * @param[in]  M     Affinity matrix
      * @param[in]  C     Constraint matrix
      */
-    void setMatrixData(const Affinity& M, const Constraint& C);
+    void setMatrixData(const Affinity& M, const Constraint& C, const Association& A);
 
     /**
      * @brief      Skip using scorePairwiseConsistency and directly set the

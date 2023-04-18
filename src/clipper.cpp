@@ -111,8 +111,10 @@ Constraint CLIPPER::getConstraintMatrix()
 
 // ----------------------------------------------------------------------------
 
-void CLIPPER::setMatrixData(const Affinity& M, const Constraint& C)
+void CLIPPER::setMatrixData(const Affinity& M, const Constraint& C, const Association& A)
 {
+  A_ = A;
+
   Eigen::MatrixXd MM = M.triangularView<Eigen::Upper>();
   MM.diagonal().setZero();
   M_ = MM.sparseView();
