@@ -79,6 +79,41 @@ void CLIPPER::solve(const Eigen::VectorXd& _u0)
 
 // ----------------------------------------------------------------------------
 
+void CLIPPER::solveAsMaximumClique(const maxclique::Params& params)
+{
+  Eigen::MatrixXd C = getConstraintMatrix();
+  C = C - Eigen::MatrixXd::Identity(C.rows(), C.cols());
+
+  utils::Timer tim;
+  tim.start();
+  std::vector<int> nodes = maxclique::solve(C, params);
+  tim.stop();
+
+  soln_.t = tim.getElapsedSeconds();
+  soln_.ifinal = 0;
+  std::swap(soln_.nodes, nodes);
+  soln_.u = Eigen::VectorXd::Zero(M_.cols());
+  soln_.score = -1;
+}
+
+// ----------------------------------------------------------------------------
+
+void CLIPPER::solveAsMSRCSDR(const sdp::Params& params)
+{
+  Eigen::MatrixXd M = getAffinityMatrix();
+  Eigen::MatrixXd C = getConstraintMatrix();
+
+  sdp::Solution soln = sdp::solve(M, C, params);
+
+  soln_.t = soln.t;
+  soln_.ifinal = 0;
+  std::swap(soln_.nodes, soln.nodes);
+  soln_.u = Eigen::VectorXd::Zero(M_.cols());
+  soln_.score = -1;
+}
+
+// ----------------------------------------------------------------------------
+
 Association CLIPPER::getInitialAssociations()
 {
   return A_;
@@ -251,11 +286,30 @@ void CLIPPER::findDenseClique(const Eigen::VectorXd& u0)
   // Generate output
   //
 
-  // estimate cluster size using largest eigenvalue
-  const int omega = std::round(F);
+  // node indices of rounded u vector
+  std::vector<int> nodes;
 
-  // extract indices of nodes in identified dense cluster
-  std::vector<int> I = utils::findIndicesOfkLargest(u, omega);
+  if (params_.rounding == Params::Rounding::NONZERO) {
+
+    nodes = utils::findIndicesWhereAboveThreshold(u, 0.0);
+
+  } else if (params_.rounding == Params::Rounding::DSD) {
+
+    // subgraph induced by non-zero elements of u
+    const std::vector<int> S = utils::findIndicesWhereAboveThreshold(u, 0.0);
+
+    // TODO(plusk): make this faster by leveraging matrix sparsity
+    nodes = dsd::solve(M_, S);
+
+  } else if (params_.rounding == Params::Rounding::DSD_HEU) {
+
+    // estimate cluster size using largest eigenvalue
+    const int omega = std::round(F);
+
+    // extract indices of nodes in identified dense cluster
+    nodes = utils::findIndicesOfkLargest(u, omega);
+
+  }
 
   const auto t2 = std::chrono::high_resolution_clock::now();
   const auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1);
@@ -264,7 +318,8 @@ void CLIPPER::findDenseClique(const Eigen::VectorXd& u0)
   // set solution
   soln_.t = elapsed;
   soln_.ifinal = i;
-  std::swap(soln_.nodes, I);
+  std::swap(soln_.nodes, nodes);
+  soln_.u0 = u0;
   soln_.u.swap(u);
   soln_.score = F;
 }
