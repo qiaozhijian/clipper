@@ -21,7 +21,7 @@ endif()
 option(CLIPPER_BUILD_BINDINGS_PYTHON "Build Python bindings" ON)
 option(CLIPPER_BUILD_BINDINGS_MATLAB "Build MATLAB bindings" OFF)
 option(CLIPPER_BUILD_TESTS "Build testsuite" OFF)
-option(CLIPPER_BUILD_BENCHMARKS "Build benchmarks" ON)
+option(CLIPPER_BUILD_BENCHMARKS "Build benchmarks" OFF)
 option(CLIPPER_ENABLE_MKL "Use MKL with Eigen" OFF)
 option(CLIPPER_ENABLE_BLAS "Use BLAS with Eigen" OFF) # apt install libopenblas-dev
 option(CLIPPER_ENABLE_MAXCLIQUE "Use PMC lib for solveAsMaximumClique" ON)
@@ -147,10 +147,9 @@ if(CLIPPER_BUILD_TESTS)
     add_subdirectory(test)
 endif()
 
-#if(CLIPPER_BUILD_BENCHMARKS)
-#    add_subdirectory(benchmarks)
-#endif()
-add_subdirectory(benchmarks)
+if(CLIPPER_BUILD_BENCHMARKS)
+    add_subdirectory(benchmarks)
+endif()
 
 ###############################################################################
 # Install
