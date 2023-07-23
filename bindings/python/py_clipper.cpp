@@ -100,6 +100,19 @@ void pybind_utils(py::module& m)
 
 // ----------------------------------------------------------------------------
 
+void pybind_dsd(py::module& m)
+{
+  m.doc() = "Exact dense edge-weighted subgraph discovery using Goldberg";
+
+  // TODO(plusk): Support sparse matrices from python
+  m.def("solve", py::overload_cast<const Eigen::MatrixXd&,
+                        const std::vector<int>&>(clipper::dsd::solve),
+    "A"_a.noconvert(), "S"_a=std::vector<int>{},
+    "Find densest edge-weighted subgraph of weighted adj mat A.");
+}
+
+// ----------------------------------------------------------------------------
+
 PYBIND11_MODULE(clipperpy, m)
 {
   m.doc() = "A graph-theoretic framework for robust data association";
@@ -110,6 +123,43 @@ PYBIND11_MODULE(clipperpy, m)
 
   py::module m_utils = m.def_submodule("utils");
   pybind_utils(m_utils);
+
+  py::module m_dsd = m.def_submodule("dsd");
+  pybind_utils(m_dsd);
+
+  py::class_<clipper::maxclique::Params>(m, "MCParams")
+    .def(py::init<>())
+    .def("__repr__", [](const clipper::maxclique::Params &params) {
+      std::ostringstream repr;
+      repr << "<CLIPPER Maximum Clique Parameters>";
+      return repr.str();
+    })
+    .def_readwrite("method", &clipper::maxclique::Params::method)
+    .def_readwrite("threads", &clipper::maxclique::Params::threads)
+    .def_readwrite("time_limit", &clipper::maxclique::Params::time_limit)
+    .def_readwrite("verbose", &clipper::maxclique::Params::verbose);
+
+  py::class_<clipper::sdp::Params>(m, "SDPParams")
+    .def(py::init<>())
+    .def("__repr__", [](const clipper::sdp::Params &params) {
+      std::ostringstream repr;
+      repr << "<CLIPPER SDP Parameters>";
+      return repr.str();
+    })
+    .def_readwrite("verbose", &clipper::sdp::Params::verbose)
+    .def_readwrite("max_iters", &clipper::sdp::Params::max_iters)
+    .def_readwrite("acceleration_interval", &clipper::sdp::Params::acceleration_interval)
+    .def_readwrite("acceleration_lookback", &clipper::sdp::Params::acceleration_lookback)
+    .def_readwrite("eps_abs", &clipper::sdp::Params::eps_abs)
+    .def_readwrite("eps_rel", &clipper::sdp::Params::eps_rel)
+    .def_readwrite("eps_infeas", &clipper::sdp::Params::eps_infeas)
+    .def_readwrite("time_limit_secs", &clipper::sdp::Params::time_limit_secs);
+
+  py::enum_<clipper::Params::Rounding>(m, "Rounding")
+      .value("NONZERO", clipper::Params::Rounding::NONZERO)
+      .value("DSD", clipper::Params::Rounding::DSD)
+      .value("DSD_HEU", clipper::Params::Rounding::DSD_HEU)
+      .export_values();
 
   py::class_<clipper::Params>(m, "Params")
     .def(py::init<>())
@@ -127,7 +177,8 @@ PYBIND11_MODULE(clipperpy, m)
     .def_readwrite("maxlsiters", &clipper::Params::maxlsiters)
     .def_readwrite("eps", &clipper::Params::eps)
     .def_readwrite("affinityeps", &clipper::Params::affinityeps)
-    .def_readwrite("rescale_u0", &clipper::Params::rescale_u0);
+    .def_readwrite("rescale_u0", &clipper::Params::rescale_u0)
+    .def_readwrite("rounding", &clipper::Params::rounding);
 
   py::class_<clipper::Solution>(m, "Solution")
     .def(py::init<>())
@@ -139,6 +190,7 @@ PYBIND11_MODULE(clipperpy, m)
     .def_readwrite("t", &clipper::Solution::t)
     .def_readwrite("ifinal", &clipper::Solution::ifinal)
     .def_readwrite("nodes", &clipper::Solution::nodes)
+    .def_readwrite("u0", &clipper::Solution::u0)
     .def_readwrite("u", &clipper::Solution::u)
     .def_readwrite("score", &clipper::Solution::score);
 
@@ -166,6 +218,10 @@ PYBIND11_MODULE(clipperpy, m)
           "D1"_a.noconvert(), "D2"_a.noconvert(), "A"_a.noconvert())
     .def("solve", &clipper::CLIPPER::solve,
           "u0"_a.noconvert()=Eigen::VectorXd())
+    .def("solve_as_maximum_clique", &clipper::CLIPPER::solveAsMaximumClique,
+          "params"_a=clipper::maxclique::Params{})
+    .def("solve_as_msrc_sdr", &clipper::CLIPPER::solveAsMSRCSDR,
+          "params"_a=clipper::sdp::Params{})
     .def("get_initial_associations", &clipper::CLIPPER::getInitialAssociations)
     .def("get_selected_associations", &clipper::CLIPPER::getSelectedAssociations)
     .def("get_solution", &clipper::CLIPPER::getSolution)

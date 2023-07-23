@@ -15,6 +15,10 @@
 #include "clipper/invariants/builtins.h"
 #include "clipper/types.h"
 
+#include "clipper/dsd.h"
+#include "clipper/sdp.h"
+#include "clipper/maxclique.h"
+
 namespace clipper {
 
   /**
@@ -41,6 +45,18 @@ namespace clipper {
                             ///< removes some randomness of the initial guess;
                             ///< i.e., after one step of power method, random
                             ///< u0's look similar.
+
+    // \brief Rounding procedure
+    enum Rounding { NONZERO, DSD, DSD_HEU };
+    // NONZERO - any nonzero elements of u are selected as nodes
+    // DSD - select the densest edge-weighted subgraph of the
+    //       subgraph induced by NONZERO rounding
+    // DSD_HEU - A heuristic for selecting the top best nodes
+    //       of the subgraph induced by NONZERO rounding
+    //       DSD_HEU tends to pick smaller subgraphs than DSD,
+    //       sometimes leading to higher precision at the cost
+    //       of lower recall
+    Rounding rounding = Rounding::DSD_HEU;
   };
 
   /**
@@ -51,6 +67,7 @@ namespace clipper {
     double t; ///< duration spent solving [s]
     int ifinal; ///< number of outer iterations before convergence
     std::vector<int> nodes; ///< indices of graph vertices in dense clique
+    Eigen::VectorXd u0; ///< initial vector used for local solver
     Eigen::VectorXd u; ///< characteristic vector associated with graph
     double score; ///< value of objective function / largest eigenvalue
   };
@@ -76,7 +93,28 @@ namespace clipper {
                                   const invariants::Data& D2,
                                   const Association& A = Association());
 
+    /**
+     * @brief      Solves the MSRC problem using
+     * graduated projected gradient ascent
+     *
+     * @param[in]  u0    Initial condition, if none provided random vec is used
+     */
     void solve(const Eigen::VectorXd& u0 = Eigen::VectorXd());
+
+    /**
+     * @brief      Solves the maximum clique problem
+     *
+     * @param[in]  params Clique solver parameters
+     */
+    void solveAsMaximumClique(const maxclique::Params& params = {});
+
+    /**
+     * @brief      Solves the maximum spectral radius clique problem using
+     *             a semidefinite relaxation.
+     *
+     * @param[in]  params  The parameters
+     */
+    void solveAsMSRCSDR(const sdp::Params& params = {});
 
     const Solution& getSolution() const { return soln_; }
     Affinity getAffinityMatrix();
